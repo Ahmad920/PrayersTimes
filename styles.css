@@ -129,6 +129,23 @@ header {
   color: #ffd54f;
 }
 
+/* Highlight the next prayer card */
+.card.highlight {
+  background: #ffd54f;
+  color: #004d40;
+  border-color: #ffd54f;
+  box-shadow: 0 0 8px #ffd54f;
+}
+/* Style countdown for midnight and last-third */
+#timer-midnight,
+#timer-last-third {
+  font-size: 0.9rem;
+  color: #ffd54f;
+  font-weight: bold;
+  text-align: center;
+  margin: 4px 0;
+}
+
 /* Loading spinner */
 #spinner {
   border: 4px solid rgba(255,255,255,0.3);
