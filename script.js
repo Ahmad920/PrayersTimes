@@ -17,27 +17,53 @@ function hideSpinner() {
 }
 
 const prayerNames = {
-  ar: { Fajr: 'الفجر', Dhuhr: 'الظهر', Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء' },
-  en: { Fajr: 'Fajr', Dhuhr: 'Dhuhr', Asr: 'Asr', Maghrib: 'Maghrib', Isha: 'Isha' },
+  ar: {
+    Fajr: 'الفجر',
+    Sunrise: 'الشروق',
+    Dhuhr: 'الظهر',
+    Asr: 'العصر',
+    Maghrib: 'المغرب',
+    Isha: 'العشاء',
+    Midnight: 'منتصف الليل',
+    LastThird: 'الثلث الأخير'
+  },
+  en: {
+    Fajr: 'Fajr',
+    Sunrise: 'Sunrise',
+    Dhuhr: 'Dhuhr',
+    Asr: 'Asr',
+    Maghrib: 'Maghrib',
+    Isha: 'Isha',
+    Midnight: 'Midnight',
+    LastThird: 'Last Third'
+  }
 };
 
-// Map English method names to Arabic
+// Map calculation method names to Arabic
 const methodNamesAr = {
-  'Shia Ithna-Ansari': 'الشيعة الاثنا عشرية',
-  'University of Islamic Sciences, Karachi': 'جامعة العلوم الإسلامية كراتشي',
-  'Islamic Society of North America': 'الاتحاد الإسلامي بأمريكا الشمالية',
   'Muslim World League': 'رابطة العالم الإسلامي',
-  'Umm Al-Qura University, Makkah': 'أم القرى، مكة المكرمة',
+  'Islamic Society of North America (ISNA)': 'الاتحاد الإسلامي بأمريكا الشمالية (ISNA)',
   'Egyptian General Authority of Survey': 'الهيئة المصرية العامة للمساحة',
+  'Umm Al-Qura University, Makkah': 'أم القرى، مكة المكرمة',
+  'University of Islamic Sciences, Karachi': 'جامعة العلوم الإسلامية كراتشي',
   'Institute of Geophysics, University of Tehran': 'معهد الجيوفيزياء، جامعة طهران',
+  'Shia Ithna-Ashari, Leva Institute, Qum': 'الشيعة الإثنا عشرية، معهد ليفا، قم',
   'Gulf Region': 'الخليج',
   'Kuwait': 'الكويت',
   'Qatar': 'قطر',
   'Majlis Ugama Islam Singapura, Singapore': 'مجلس الشريعة الإسلامية سنغافورة',
-  'Union des Organisations Islamiques de France': 'الاتحاد الفرنسي للمنظمات الإسلامية',
-  'Diyanet İşleri Başkanlığı, Turkey': 'رئاسة الشؤون الدينية، تركيا',
+  'Union Organization Islamic de France': 'الاتحاد الفرنسي للمنظمات الإسلامية',
+  'Diyanet İşleri Başkanlığı, Turkey (experimental)': 'رئاسة الشؤون الدينية، تركيا (تجريبي)',
   'Spiritual Administration of Muslims of Russia': 'الإدارة الروحية لمسلمي روسيا',
-  'Moonsighting Committee Worldwide': 'لجنة رؤية الهلال العالمية',
+  'Moonsighting Committee Worldwide (Moonsighting.com)': 'لجنة رؤية الهلال العالمية',
+  'Dubai (experimental)': 'دبي (تجريبي)',
+  'Jabatan Kemajuan Islam Malaysia (JAKIM)': 'وزارة الشؤون الإسلامية بماليزيا (جاكيم)',
+  'Tunisia': 'تونس',
+  'Algeria': 'الجزائر',
+  'Kementerian Agama Republik Indonesia': 'وزارة الشؤون الدينية بجمهورية إندونيسيا',
+  'Morocco': 'المغرب',
+  'Comunidade Islamica de Lisboa': 'الجالية الإسلامية بلشبونة',
+  'Ministry of Awqaf, Islamic Affairs and Holy Places, Jordan': 'وزارة الأوقاف والشؤون الإسلامية والمقدسات، الأردن',
   'Custom': 'مخصص'
 };
 
@@ -53,16 +79,32 @@ function populateMethods() {
   const select = document.getElementById('calc-method');
   const prev = select.value;
   select.innerHTML = '';
-  Object.entries(calculationMethods).forEach(([key, method]) => {
+  const methods = Object.values(calculationMethods).map(method => {
+    const engName = method.name || 'Custom';
+    const arName = methodNamesAr[engName] || engName;
+    const id = method.id;
+    const key = id.toString();
+    return { key, engName, arName, id };
+  });
+  // select default: previous choice if valid, otherwise method id 4
+  const defaultEntry = methods.find(m => m.key === prev) || methods.find(m => m.id === 4);
+  // collect others
+  const others = methods.filter(m => m.key !== defaultEntry.key);
+  // sort others by Arabic name
+  others.sort((a, b) =>
+    (a.arName || '').localeCompare(b.arName || '', 'ar', { ignorePunctuation: true })
+  );
+  // rebuild list with default at top
+  const finalList = [defaultEntry, ...others];
+  // append options
+  finalList.forEach(({ key, engName, arName }) => {
     const opt = document.createElement('option');
     opt.value = key;
-    const engName = method.name;
-    const arName = methodNamesAr[method.name] || engName;
     opt.textContent = userLang === 'ar' ? arName : engName;
     select.appendChild(opt);
   });
-  // Default to Umm Al-Qura University, Makkah (method id '4') if no valid previous selection
-  select.value = calculationMethods[prev] ? prev : '4';
+  // apply selection
+  select.value = defaultEntry.key;
 }
 
 // Get location via IP or fallback to geolocation
@@ -131,9 +173,10 @@ function displayDates() {
 function displayTimings() {
   const list = document.getElementById('prayers-list');
   list.innerHTML = '';
-  ['Fajr','Dhuhr','Asr','Maghrib','Isha'].forEach(prayer => {
+  ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'].forEach(prayer => {
     const li = document.createElement('li');
     li.className = 'card';
+    li.dataset.prayer = prayer;
     const name = document.createElement('span');
     name.textContent = prayerNames[userLang][prayer];
     const time = document.createElement('span');
@@ -172,26 +215,51 @@ function displayLocation(city, country) {
   el.textContent = userLang === 'ar' ? `${city}، ${country}` : `${city}, ${country}`;
 }
 
-// Start countdown to next prayer
+// Start countdown to next event
 function startCountdown() {
   if (countdownInterval) clearInterval(countdownInterval);
   countdownInterval = setInterval(() => {
     const now = new Date();
-    const schedule = ['Fajr','Dhuhr','Asr','Maghrib','Isha'].map(p => {
+    // build schedule of events
+    const events = ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'];
+    let schedule = events.map(p => {
       const [h,m] = timingData.timings[p].split(':').map(Number);
-      return {p, t: new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m)};
+      return { p, t: new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m) };
     });
-    let next = schedule.find(s=>s.t>now);
-    if (!next) next = {p:'Fajr', t: new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,schedule[0].t.getHours(),schedule[0].t.getMinutes())};
+    // compute midnight & last-third
+    const [mH,mM] = timingData.timings.Maghrib.split(':').map(Number);
+    const [fH,fM] = tomorrowTiming.timings.Fajr.split(':').map(Number);
+    const nightMin = (fH + 24) * 60 + fM - (mH * 60 + mM);
+    const midMin = nightMin / 2 + (mH * 60 + mM);
+    const last3Min = (nightMin * 2) / 3 + (mH * 60 + mM);
+    const midDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(midMin/60), Math.floor(midMin%60));
+    const last3Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(last3Min/60)%24, Math.floor(last3Min%60));
+    schedule.push({ p: 'Midnight', t: midDate });
+    schedule.push({ p: 'LastThird', t: last3Date });
+    // determine next event
+    let next = schedule.find(s => s.t > now);
+    if (!next) next = { p: 'Fajr', t: new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, fH, fM) };
     const diff = next.t - now;
     const h = Math.floor(diff/1000/60/60);
     const mm = Math.floor((diff/1000/60)%60);
     const ss = Math.floor((diff/1000)%60);
-    document.getElementById('next-prayer').textContent =
-      userLang==='ar'?`الصلاة القادمة: ${prayerNames.ar[next.p]}`:`Next Prayer: ${prayerNames.en[next.p]}`;
+    // update next event label & timer
+    document.getElementById('next-prayer').textContent = userLang==='ar'
+      ? `الحدث القادم: ${prayerNames.ar[next.p]}` : `Next: ${prayerNames.en[next.p]}`;
     document.getElementById('timer').textContent =
       `${h}:${mm.toString().padStart(2,'0')}:${ss.toString().padStart(2,'0')}`;
-  },1000);
+    // clear all existing highlights
+    document.querySelectorAll('#prayers-list li, #midnight, #last-third').forEach(el => el.classList.remove('highlight'));
+    // highlight upcoming element
+    if (['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'].includes(next.p)) {
+      const el = document.querySelector(`#prayers-list li[data-prayer="${next.p}"]`);
+      if (el) el.classList.add('highlight');
+    } else if (next.p === 'Midnight') {
+      document.getElementById('midnight').classList.add('highlight');
+    } else if (next.p === 'LastThird') {
+      document.getElementById('last-third').classList.add('highlight');
+    }
+  }, 1000);
 }
 
 // Toggle between Arabic and English
